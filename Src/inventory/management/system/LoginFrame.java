@@ -318,8 +318,13 @@ public class LoginFrame extends Frame implements ActionListener {
             setStatus("Please use company email only!", false);
             return;
         } else {
-            setStatus("Logging in......", false);
-            // TODO: Login logic with database.
+            if (username.equals("admin@bigbazaar.com") && password.equals("admin123")) {
+                setStatus("Login successful!", true);
+                new AdminFeatures();
+                dispose();
+            } else {
+                setStatus("Invalid credentials!", false);
+            }
         }
     }
 
