@@ -36,7 +36,7 @@ public class AdminFeatures {
         String[] btnMenu = {
             "Dashboard",
             "Employee Management",
-            "Product/Stock Management",
+            "Product Management",
             "Suppliers",
             "Sales & Purchase",
             "Reports",
