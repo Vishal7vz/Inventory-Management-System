@@ -1,3 +1,4 @@
+
 package inventory.management.system;
 
 import java.awt.Button;
@@ -12,37 +13,37 @@ import java.awt.RenderingHints;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
-public class AddProduct extends JFrame {
+public class ExistingProduct extends JFrame {
 
     JTextField productNameField, productIdField;
     JTextArea description;
-    Button addProduct, clear, existingProduct, back;
+    Button addProduct, clear, updateProduct, back, search, removeProduct;
     JComboBox<String> category;
     JPanel imagePanel;
     Canvas imgCanvas;
 
-        // ! ── Constructor ────────────────────────────────────────────────────────────
-    public AddProduct() {
+    // ! ── Constructor ────────────────────────────────────────────────────────────
+    public ExistingProduct() {
         setLayout(null); // Set layout BEFORE adding components
         getContentPane().setBackground(new Color(30, 30, 60));
         ImageIcon image = new ImageIcon("Src\\Icons\\Logo.png");
         setIconImage(image.getImage());
 
-        //! Get the screen size for the header width
+        // ! Get the screen size for the header width
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         int screenWidth = (int) screenSize.getWidth();
 
-        JLabel header = new JLabel("Inventory Management System - Add New Product", JLabel.CENTER);
+        JLabel header = new JLabel("Inventory Management System - Manage Existing Product", JLabel.CENTER);
         header.setFont(new Font("SansSerif", Font.BOLD, 36));
         header.setForeground(Color.WHITE);
         header.setBackground(new Color(15, 23, 42));
@@ -52,54 +53,54 @@ public class AddProduct extends JFrame {
 
         JPanel form = new JPanel();
         form.setLayout(null);
-        form.setBounds(30, 180, 735, 600);
+        form.setBounds(30, 180, 735, 660);
         form.setBackground(new Color(30, 41, 59));
-        form.setBorder(BorderFactory.createEmptyBorder(0,0,0,10));
-
-        JLabel productNamelbl = new JLabel("Product Name: ");
-        productNamelbl.setFont(new Font("SansSerif", Font.BOLD, 26));
-        productNamelbl.setForeground(Color.WHITE);
-        productNamelbl.setBackground(getForeground());
-        productNamelbl.setOpaque(true); // Make the label paint its background
-        productNamelbl.setBounds(40, 60, 250, 30);
-        form.add(productNamelbl);
-
-        productNameField = new JTextField(25);
-        productNameField.setFont(new Font("SansSerif", Font.BOLD, 16));
-        productNameField.setBackground(Color.WHITE);
-        productNameField.setForeground(Color.BLACK);
-        productNameField.setBounds(350, 60, 350, 30);
-        form.add(productNameField);
+        form.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 10));
 
         JLabel productIdlbl = new JLabel("Product ID: ");
         productIdlbl.setFont(new Font("SansSerif", Font.BOLD, 26));
         productIdlbl.setForeground(Color.WHITE);
         productIdlbl.setBackground(getForeground());
         productIdlbl.setOpaque(true); // Make the label paint its background
-        productIdlbl.setBounds(40, 120, 250, 30);
+        productIdlbl.setBounds(40, 50, 250, 30);
         form.add(productIdlbl);
 
         productIdField = new JTextField(25);
         productIdField.setFont(new Font("SansSerif", Font.BOLD, 16));
         productIdField.setBackground(Color.WHITE);
         productIdField.setForeground(Color.BLACK);
-        productIdField.setBounds(350, 120, 350, 30);
+        productIdField.setBounds(350, 50, 350, 30);
         form.add(productIdField);
 
+        JLabel productNamelbl = new JLabel("Product Name: ");
+        productNamelbl.setFont(new Font("SansSerif", Font.BOLD, 26));
+        productNamelbl.setForeground(Color.WHITE);
+        productNamelbl.setBackground(getForeground());
+        productNamelbl.setOpaque(true); // Make the label paint its background
+        productNamelbl.setBounds(40, 150, 250, 30);
+        form.add(productNamelbl);
+
+        productNameField = new JTextField(25);
+        productNameField.setFont(new Font("SansSerif", Font.BOLD, 16));
+        productNameField.setBackground(Color.WHITE);
+        productNameField.setForeground(Color.BLACK);
+        productNameField.setBounds(350, 150, 350, 30);
+        productNameField.setEditable(false);
+        form.add(productNameField);
 
         JLabel categorylbl = new JLabel("Category: ");
         categorylbl.setFont(new Font("SansSerif", Font.BOLD, 26));
         categorylbl.setForeground(Color.WHITE);
         categorylbl.setBackground(getForeground());
         categorylbl.setOpaque(true); // Make the label paint its background
-        categorylbl.setBounds(40, 180, 250, 30);
+        categorylbl.setBounds(40, 210, 250, 30);
         form.add(categorylbl);
 
         category = new JComboBox<String>(new String[] { "Select", "Hardware", "Grocery", "Shoes" });
         category.setFont(new Font("SansSerif", Font.BOLD, 16));
         category.setBackground(Color.WHITE);
         category.setForeground(Color.BLACK);
-        category.setBounds(350, 180, 350, 30);
+        category.setBounds(350, 210, 350, 30);
         form.add(category);
 
         JLabel descriptionlbl = new JLabel("Description: ");
@@ -107,49 +108,59 @@ public class AddProduct extends JFrame {
         descriptionlbl.setForeground(Color.WHITE);
         descriptionlbl.setBackground(getForeground());
         descriptionlbl.setOpaque(true); // Make the label paint its background
-        descriptionlbl.setBounds(40, 240, 250, 30);
+        descriptionlbl.setBounds(40, 270, 250, 30);
         form.add(descriptionlbl);
 
         description = new JTextArea(20, 30);
         description.setFont(new Font("SansSerif", Font.BOLD, 16));
         description.setBackground(Color.WHITE);
         description.setForeground(Color.BLACK);
-        description.setBounds(350, 240, 350, 120);
+        description.setBounds(350, 270, 350, 120);
         form.add(description);
 
-        //! ------------- Label to show status ----------------------
+        // ! ------------- Label to show status ----------------------
         JLabel statuslbl = new JLabel("", JLabel.CENTER);
         statuslbl.setFont(new Font("SansSerif", Font.ITALIC, 14));
         statuslbl.setBackground(getForeground());
         statuslbl.setForeground(Color.RED);
-        statuslbl.setBounds(300, 360, 400, 40);
+        statuslbl.setBounds(320, 390, 400, 40);
         form.add(statuslbl);
 
-
-        //! ------------- Buttons ----------------------
-        addProduct = new Button("Add Product");
+        // ! ------------- Buttons ----------------------
+        addProduct = new Button("Update Product");
         addProduct.setFont(new Font("SansSerif", Font.BOLD, 18));
-        addProduct.setBounds(350, 420, 150, 35);
+        addProduct.setBounds(350, 450, 150, 35);
         addProduct.setBackground(new Color(59, 130, 246));
         addProduct.setForeground(Color.WHITE);
         form.add(addProduct);
 
         clear = new Button("Clear");
         clear.setFont(new Font("SansSerif", Font.BOLD, 18));
-        clear.setBounds(550, 420, 150, 35);
+        clear.setBounds(550, 450, 150, 35);
         clear.setBackground(Color.RED);
         clear.setForeground(Color.WHITE);
         form.add(clear);
 
-        existingProduct = new Button("Update Existing Product");
-        existingProduct.setFont(new Font("SansSerif", Font.BOLD, 18));
-        existingProduct.setBounds(350, 480, 350, 35);
-        existingProduct.setBackground(Color.CYAN);
-        existingProduct.setForeground(Color.BLACK);
-        form.add(existingProduct);
+        search = new Button("Search");
+        search.setFont(new Font("SansSerif", Font.BOLD, 18));
+        search.setBounds(550, 90, 150, 35);
+        search.setBackground(new Color(59, 130, 246));
+        search.setForeground(Color.WHITE);
+        form.add(search);
 
-        form.setVisible(true);
-        add(form);
+        removeProduct = new Button("Remove Product");
+        removeProduct.setFont(new Font("SansSerif", Font.BOLD, 18));
+        removeProduct.setBounds(350, 570, 350, 35);
+        removeProduct.setBackground(new Color(99, 102, 241));
+        removeProduct.setForeground(Color.WHITE);
+        form.add(removeProduct);
+
+        updateProduct = new Button("Manage New Product");
+        updateProduct.setFont(new Font("SansSerif", Font.BOLD, 18));
+        updateProduct.setBounds(350, 510, 350, 35);
+        updateProduct.setBackground(Color.CYAN);
+        updateProduct.setForeground(Color.BLACK);
+        form.add(updateProduct);
 
         back = new Button("Back");
         back.setFont(new Font("SansSerif", Font.BOLD, 18));
@@ -158,7 +169,10 @@ public class AddProduct extends JFrame {
         back.setForeground(Color.BLACK);
         add(back);
 
-        //! ------------- Image Panel ----------------------
+        form.setVisible(true);
+        add(form);
+
+        // ! ------------- Image Panel ----------------------
         imagePanel = new JPanel(null) {
             @Override
             public void paint(Graphics g) {
@@ -175,7 +189,7 @@ public class AddProduct extends JFrame {
         add(imagePanel);
 
         try {
-            //! ------------- Trying to load the image from system ----------------------
+            // ! ------------- Trying to load the image from system ----------------------
             Image adminImg = Toolkit.getDefaultToolkit().getImage("Src/Icons/AddProduct.png");
             imgCanvas = new Canvas(null) {
                 public void paint(Graphics g) {
@@ -195,32 +209,78 @@ public class AddProduct extends JFrame {
             imagePanel.add(placeholder);
         }
 
-        //! ======= Action Listeners ==========
+        // ! ======= Action Listeners ==========
 
         addProduct.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+
+                // ! ------------ Will check in future what details are needed to perform this
+                // operations.
                 String productName = productNameField.getText().trim();
                 String productId = productIdField.getText().trim();
                 String categoryinfo = category.getSelectedItem().toString().trim();
                 String prodDescription = description.getText().trim();
 
-                //! ------------- Input validations ----------------------
+                // ! ------------- Input validations ----------------------
 
-                if (productName.isEmpty() || productId.isEmpty() || categoryinfo.equals("Select") || prodDescription.isEmpty()) {
-                    statuslbl.setText("Please fill all fields.");
+                if (prodDescription.isEmpty() || productName.isEmpty() || categoryinfo.isEmpty()) {
+                    JOptionPane.showMessageDialog(null, "Please enter all feilds first.", "Empty fields",
+                            JOptionPane.INFORMATION_MESSAGE);
                     return;
                 }
 
                 try {
 
                     statuslbl.setText("Adding Product.......");
-                    // TODO: Logic to add product into Database
+                    // TODO: Logic to Update product into database.
 
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
 
+            }
+        });
+
+        removeProduct.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+
+                // ! Will check in future what details are needed to perform this action.
+                String productName = productNameField.getText().trim();
+                String productId = productIdField.getText().trim();
+                String categoryinfo = category.getSelectedItem().toString().trim();
+                String prodDescription = description.getText().trim();
+
+                if (prodDescription.isEmpty() || productName.isEmpty() || categoryinfo.isEmpty()) {
+                    JOptionPane.showMessageDialog(null, "Please enter all feilds first.", "Empty fields",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    return;
+                }
+
+                try {
+                    // TODO: Logic to delete product from the database
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+
+            }
+        });
+
+        search.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String id = productIdField.getText().trim();
+                if (id.isEmpty()) {
+                    statuslbl.setText("Please enter product ID before search.");
+                    return;
+                }
+                // TODO: Fetch Data from database of a product and display on the screen.
+
+                productNameField.setText("To be fetched from database");
+                category.setSelectedItem("To be fetched from database");
+                description.setText("To be fetched from database");
+                return;
             }
         });
 
@@ -236,11 +296,11 @@ public class AddProduct extends JFrame {
             }
         });
 
-        existingProduct.addActionListener(new ActionListener() {
+        updateProduct.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 setVisible(false);
-                new ExistingProduct();
+                new AddProduct();
                 return;
             }
         });
@@ -250,7 +310,7 @@ public class AddProduct extends JFrame {
             public void actionPerformed(ActionEvent e) {
                 setVisible(false);
                 new AdminFeatures();
-
+                return;
             }
         });
 
@@ -260,6 +320,6 @@ public class AddProduct extends JFrame {
     }
 
     public static void main(String[] args) {
-        new AddProduct();
+        new ExistingProduct();
     }
 }
