@@ -2,11 +2,18 @@ package inventory.management.system;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
 import java.awt.event.ItemEvent;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
 import java.util.regex.Pattern;
@@ -17,12 +24,17 @@ import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
+import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 
 /**
  * Employee-facing sales form (New Sale only).
@@ -32,6 +44,7 @@ public class EmployeeSalesPanel extends JPanel {
 
     private JTabbedPane mainTabs;
     JLabel heading;
+    String Username, Password;
 
     private static final Color BG_DARK = new Color(15, 23, 42);
     private static final Color BG_CARD = new Color(30, 41, 59);
@@ -40,13 +53,26 @@ public class EmployeeSalesPanel extends JPanel {
     private static final Color TEXT_WHITE = new Color(241, 245, 249);
     private static final Color INPUT_BG = new Color(51, 65, 85);
     private static final Font FONT_LABEL = new Font("SansSerif", Font.BOLD, 16);
-    private static final Font FONT_FIELD = new Font("SansSerif", Font.PLAIN, 15);
+    private static final Font FONT_FIELD = new Font("SansSerif", Font.BOLD, 15);
     private static final Font FONT_TITLE = new Font("SansSerif", Font.BOLD, 22);
     private static final Font FONT_BTN = new Font("SansSerif", Font.BOLD, 16);
 
     private static final Pattern DATE_PATTERN = Pattern.compile("^\\d{2}/\\d{2}/\\d{4}$");
 
-    public EmployeeSalesPanel() {
+    private final DefaultTableModel productDetailsModel;
+
+    private static final String[] PRODUCT_DETAILS_COLS = {
+            "Product ID", "Product ", "Category", "Description", "Qty", "Purchase Price", "Selling Price",
+    };
+
+    private static final Color TABLE_HEADER_BLUE = new Color(37, 99, 235);
+
+    public EmployeeSalesPanel(String Username, String Password) {
+
+        this.Username = Username;
+        this.Password = Password;
+
+        productDetailsModel = createNonEditableTableModel(PRODUCT_DETAILS_COLS);
 
         setLayout(new BorderLayout());
         setBackground(BG_DARK);
@@ -66,6 +92,7 @@ public class EmployeeSalesPanel extends JPanel {
         mainTabs.addTab("New Sale", wrapTab(buildNewSaleTab()));
         mainTabs.addTab("Register Customer", wrapTab(buildNewCustomerTab()));
         mainTabs.addTab("Change Password", wrapTab(buildChangePasswordTab()));
+        mainTabs.addTab("Product Details", wrapTab(buildProductDetailsTab()));
 
         mainTabs.addChangeListener(new ChangeListener() {
             @Override
@@ -82,6 +109,9 @@ public class EmployeeSalesPanel extends JPanel {
                 } else if (selectedIndex == 2) {
                     heading.setText("Change Password");
                     return;
+                } else if (selectedIndex == 3) {
+                    heading.setText("Product Details");
+                    return;
                 } else {
                     return;
                 }
@@ -90,6 +120,15 @@ public class EmployeeSalesPanel extends JPanel {
         });
 
         add(mainTabs, BorderLayout.CENTER);
+    }
+
+    private static DefaultTableModel createNonEditableTableModel(String[] columnNames) {
+        return new DefaultTableModel(columnNames, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
     }
 
     private JPanel wrapTab(JPanel inner) {
@@ -122,6 +161,20 @@ public class EmployeeSalesPanel extends JPanel {
         cbCategory.addItemListener(e -> {
             if (e.getStateChange() == ItemEvent.SELECTED) {
                 ProductCatalog.refreshProductCombo(cbProduct, cbCategory.getSelectedItem());
+            }
+        });
+
+        cbCategory.addFocusListener(new FocusListener() {
+
+            @Override
+            public void focusGained(FocusEvent e) {
+
+                ProductCatalog.refreshCategoryCombo();
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                // System.out.println("ComboBox Lost Focus");
             }
         });
 
@@ -176,13 +229,8 @@ public class EmployeeSalesPanel extends JPanel {
             int qty = Integer.parseInt(qtyStr);
             double price = Double.parseDouble(priceStr);
             double total = qty * price;
-            // ! int custId = Integer.parseInt(customerIdStr);
             clearAfterSale(tfCustomerId, tfCustomer, cbCategory, cbProduct, tfQty, tfPrice, tfDate);
-            JOptionPane.showMessageDialog(SwingUtilities.getWindowAncestor(this),
-                    "Sale recorded successfully.\nCustomer ID: " + customerIdStr + "\nCustomer: " + customer
-                            + "\nCategory: " + category + "\nProduct: " + product + "\nTotal amount: "
-                            + formatRupee(total),
-                    "Success", JOptionPane.INFORMATION_MESSAGE);
+
             mainTabs.setSelectedIndex(0);
 
             // TODO: Save the sales data into database.
@@ -191,6 +239,93 @@ public class EmployeeSalesPanel extends JPanel {
         panel.add(submit, gbc);
 
         return panel;
+    }
+
+    JPanel buildProductDetailsTab() {
+        loadProductData();
+        return tableInScrollPane(productDetailsModel);
+    }
+
+    private JPanel tableInScrollPane(DefaultTableModel model) {
+        JPanel holder = new JPanel(new BorderLayout());
+        holder.setBackground(BG_DARK);
+
+        JTable table = new JTable(model);
+        table.setFont(FONT_FIELD);
+        table.setForeground(TEXT_WHITE);
+        table.setBackground(BG_CARD);
+        table.setGridColor(new Color(71, 85, 105));
+        table.setRowHeight(26);
+        table.setFillsViewportHeight(true);
+
+        styleTableHeader(table);
+
+        DefaultTableCellRenderer left = new DefaultTableCellRenderer();
+        left.setBackground(BG_CARD);
+        left.setForeground(TEXT_WHITE);
+        left.setFont(FONT_FIELD);
+        for (int c = 0; c < table.getColumnCount(); c++) {
+            table.getColumnModel().getColumn(c).setCellRenderer(left);
+        }
+
+        JScrollPane scroll = new JScrollPane(table);
+        scroll.setBorder(BorderFactory.createLineBorder(ACCENT2, 1));
+        scroll.getViewport().setBackground(BG_CARD);
+        holder.add(scroll, BorderLayout.CENTER);
+        return holder;
+    }
+
+    private void styleTableHeader(JTable table) {
+        JTableHeader header = table.getTableHeader();
+        header.setBackground(TABLE_HEADER_BLUE);
+        header.setForeground(Color.WHITE);
+        header.setFont(new Font("SansSerif", Font.BOLD, 14));
+        header.setReorderingAllowed(false);
+        DefaultTableCellRenderer hr = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable t, Object v, boolean sel, boolean foc, int r, int c) {
+                Component comp = super.getTableCellRendererComponent(t, v, sel, foc, r, c);
+                comp.setBackground(TABLE_HEADER_BLUE);
+                comp.setForeground(Color.WHITE);
+                comp.setFont(new Font("SansSerif", Font.BOLD, 14));
+                setHorizontalAlignment(SwingConstants.CENTER);
+                return comp;
+            }
+        };
+        header.setDefaultRenderer(hr);
+    }
+
+    private void loadProductData() {
+
+        productDetailsModel.setRowCount(0);
+
+        try {
+            Connection conn = DBConnection.getConnection();
+            String fetchProductDetailsQuery = "SELECT PRODUCT.*, PRODUCT_PRICE.SELLING_UNIT_PRICE,PRODUCT_PRICE.PURCHASE_UNIT_PRICE, PRODUCT_QUANTITY.QUANTITY FROM PRODUCT\n"
+                    +
+                    "INNER JOIN PRODUCT_PRICE\n" +
+                    "INNER JOIN PRODUCT_QUANTITY\n" +
+                    "WHERE PRODUCT.PRODUCT_ID = PRODUCT_PRICE.PRODUCT_ID AND PRODUCT.PRODUCT_ID = PRODUCT_QUANTITY.PRODUCT_ID;";
+            PreparedStatement psStmt = conn.prepareStatement(fetchProductDetailsQuery);
+            ResultSet res = psStmt.executeQuery();
+
+            while (res.next()) {
+                productDetailsModel.addRow(new Object[] {
+                        res.getString("PRODUCT_ID"),
+                        res.getString("PRODUCT_NAME"),
+                        res.getString("CATEGORY"),
+                        res.getString("DESCRIPTION"),
+                        res.getString("QUANTITY"),
+                        res.getDouble("PURCHASE_UNIT_PRICE"),
+                        res.getDouble("SELLING_UNIT_PRICE"),
+                });
+            }
+
+            conn.close();
+            return;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private JPanel buildNewCustomerTab() {
@@ -205,19 +340,30 @@ public class EmployeeSalesPanel extends JPanel {
         JLabel lblCustomerId = makeFormLabel("Customer ID");
         JLabel lblCustomer = makeFormLabel("Customer Name");
         JLabel lblMobileNo = makeFormLabel("Mobile No.");
+        JLabel lblAge = makeFormLabel("Age.");
+        JLabel lblGender = makeFormLabel("Gender.");
         JLabel lblEmail = makeFormLabel("Email");
         JLabel lblAddress = makeFormLabel("Address");
 
         JTextField tfCustomerId = makeField();
         JTextField tfCustomer = makeField();
         JTextField tfMobileNo = makeField();
+        JTextField tfAge = makeField();
         JTextField tfEmail = makeField();
         JTextField tfAddress = makeField();
+
+        JComboBox<String> cbGender = makeCombo(new String[] { "Male", "Female", "Others" });
+
+        tfCustomerId.setText("CUS-BGB-0001");
+        tfCustomerId.setForeground(Color.GRAY);
+        placeHolder(tfCustomerId, tfCustomerId.getText().trim());
 
         int row = 0;
         addFormRow(panel, gbc, row++, lblCustomerId, tfCustomerId);
         addFormRow(panel, gbc, row++, lblCustomer, tfCustomer);
         addFormRow(panel, gbc, row++, lblMobileNo, tfMobileNo);
+        addFormRow(panel, gbc, row++, lblAge, tfAge);
+        addFormRow(panel, gbc, row++, lblGender, cbGender);
         addFormRow(panel, gbc, row++, lblEmail, tfEmail);
         addFormRow(panel, gbc, row++, lblAddress, tfAddress);
 
@@ -232,12 +378,35 @@ public class EmployeeSalesPanel extends JPanel {
             String customerIdStr = tfCustomerId.getText().trim();
             String customer = tfCustomer.getText().trim();
             String mobile = tfMobileNo.getText().trim();
+            String ageStr = tfAge.getText().trim();
+            String gender = cbGender.getSelectedItem().toString().trim();
             String email = tfEmail.getText().trim();
             String address = tfAddress.getText().trim();
 
             String idErr = validateEntityId(customerIdStr, "Customer ID");
             if (idErr != null) {
                 JOptionPane.showMessageDialog(this, idErr, "Validation", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            int age = 0 ;
+
+            try {
+                age = Integer.parseInt(ageStr);
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(panel, "Age should be a positive number", "Warning", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            if(age < 0){
+                JOptionPane.showMessageDialog(panel, "Age should be a positive number", "Warning", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            if (customerIdStr.length() != 12 || !customerIdStr.startsWith("CUS-BGB-")
+                    || !customerIdStr.matches("^[A-Z]{3}-[A-Z]{3}-[0-9]{4}$")) {
+                JOptionPane.showMessageDialog(this, "Invalid Customer ID format!", "Validation",
+                        JOptionPane.WARNING_MESSAGE);
                 return;
             }
 
@@ -265,10 +434,39 @@ public class EmployeeSalesPanel extends JPanel {
                 return;
             }
 
-            // TODO: Save the customer data into database.
+            try {
 
-            JOptionPane.showMessageDialog(SwingUtilities.getWindowAncestor(this), "Customer Registered Successfully",
-                    "Success", JOptionPane.INFORMATION_MESSAGE);
+                Connection conn = DBConnection.getConnection();
+                String addCustomerQuery = "INSERT INTO CUSTOMER (CUSTOMER_ID, CUSTOMER_NAME, MOBILE_NO, AGE, GENDER, EMAIL, ADDRESS) VALUES (?, ?, ?, ?, ?, ?, ?)";
+                PreparedStatement psStmt = conn.prepareStatement(addCustomerQuery);
+                psStmt.setString(1, customerIdStr);
+                psStmt.setString(2, customer);
+                psStmt.setString(3, mobile);
+                psStmt.setInt(4, age);
+                psStmt.setString(5, gender);
+                psStmt.setString(6, email);
+                psStmt.setString(7, address);
+
+                int affectedRows = psStmt.executeUpdate();
+
+                if (affectedRows > 0) {
+
+                    JOptionPane.showMessageDialog(SwingUtilities.getWindowAncestor(this),
+                            "Customer Registered Successfully",
+                            "Success", JOptionPane.INFORMATION_MESSAGE);
+                    conn.close();
+                }
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+            tfCustomerId.setText("CUS-BGB-0001");
+            tfCustomer.setText("");
+            tfMobileNo.setText("");
+            tfEmail.setText("");
+            tfAddress.setText("");
+            tfCustomerId.setForeground(Color.GRAY);
+            placeHolder(tfCustomerId, tfCustomerId.getText().trim());
             mainTabs.setSelectedIndex(0);
         });
 
@@ -309,18 +507,52 @@ public class EmployeeSalesPanel extends JPanel {
             String newPassword = tfNewPassword.getText().trim();
             String confirmPassword = tfConfirmPassword.getText().trim();
 
-            // TODO: Add further validations
+            if (!oldPasswordStr.equals(this.Password)) {
+                JOptionPane.showMessageDialog(this, "Current Password does not matched", "Authentication",
+                        JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
 
             if (!newPassword.equals(confirmPassword)) {
                 JOptionPane.showMessageDialog(this, "Password Mismatched", "Mismatch", JOptionPane.INFORMATION_MESSAGE);
                 return;
             }
 
-            // TODO: Update the new password into database.
+            if (newPassword.length() < 10) {
+                JOptionPane.showMessageDialog(this, "Password length should be more than 10 characters",
+                        "Authenticatiion", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
 
-            JOptionPane.showMessageDialog(SwingUtilities.getWindowAncestor(this), "Password Changed Successfully",
-                    "Success", JOptionPane.INFORMATION_MESSAGE);
-            mainTabs.setSelectedIndex(0);
+            if (!newPassword.matches("^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=]).{10,16}$")) {
+                JOptionPane.showMessageDialog(this,
+                        "Password must contain atleast a capital letter, small letter, numbers and a special character.",
+                        "Authenticatiion", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+
+            try {
+                Connection conn = DBConnection.getConnection();
+                String changePasswordQuery = "UPDATE EMPLOYEE SET PASSWORD = ? WHERE EMAIL = ?";
+                PreparedStatement psStmt = conn.prepareStatement(changePasswordQuery);
+                psStmt.setString(1, confirmPassword);
+                psStmt.setString(2, this.Username);
+
+                int affectedRows = psStmt.executeUpdate();
+
+                if (affectedRows > 0) {
+                    JOptionPane.showMessageDialog(this, "Password Changed Successfully", "Authentication",
+                            JOptionPane.INFORMATION_MESSAGE);
+
+                    mainTabs.setSelectedIndex(0);
+                }
+
+                conn.close();
+                return;
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
         });
 
         panel.add(changePassword, gbc);
@@ -418,6 +650,26 @@ public class EmployeeSalesPanel extends JPanel {
         return null;
     }
 
+    private void placeHolder(JTextField txtId, String placeHolder) {
+        txtId.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                if (txtId.getText().equals(placeHolder)) {
+                    txtId.setText("");
+                    txtId.setForeground(Color.WHITE);
+                }
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                if (txtId.getText().isEmpty()) {
+                    txtId.setForeground(Color.GRAY);
+                    txtId.setText(placeHolder);
+                }
+            }
+        });
+    }
+
     private String validateSaleRest(String customer, String qtyStr, String priceStr, String dateStr) {
         if (customer.isEmpty()) {
             return "Customer name is required.";
@@ -458,10 +710,6 @@ public class EmployeeSalesPanel extends JPanel {
             return "Invalid calendar date.";
         }
         return null;
-    }
-
-    private static String formatRupee(double amount) {
-        return String.format(Locale.US, "₹%,.2f", amount);
     }
 
 }

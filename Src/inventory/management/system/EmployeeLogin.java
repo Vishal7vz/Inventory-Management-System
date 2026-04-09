@@ -5,6 +5,9 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 
 import javax.swing.ImageIcon;
 
@@ -74,7 +77,7 @@ public class EmployeeLogin extends Frame {
 
         tfUser = new TextField();
         tfUser.setBounds(200, 370, 330, 35);
-        tfUser.setFont(new Font("SansSerif", Font.BOLD, 20));
+        tfUser.setFont(new Font("SansSerif", Font.BOLD, 16));
         loginPanel.add(tfUser);
 
         Label lblPass = new Label("Password: ");
@@ -86,7 +89,7 @@ public class EmployeeLogin extends Frame {
         tfPass = new TextField();
         tfPass.setEchoChar('*');
         tfPass.setBounds(200, 440, 330, 35);
-        tfPass.setFont(new Font("SansSerif", Font.BOLD, 30));
+        tfPass.setFont(new Font("SansSerif", Font.BOLD, 25));
         tfPass.setForeground(Color.BLACK);
         loginPanel.add(tfPass);
 
@@ -145,11 +148,42 @@ public class EmployeeLogin extends Frame {
         // ! Button actions
         login.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                // Demo mode: open sales workspace directly on login click.
-                // TODO: Database logic to grant login to employee
-                dispose();
-                new EmployeeDashboardFrame();
-                return;
+                String Username = tfUser.getText().trim();
+                String Password = tfPass.getText().trim();
+
+                if (!isValidEmail(Username)) {
+                    lblMessage.setText("Invalid Email Format!");
+                    return;
+                }
+
+                if (!isCompanyEmail(Username)) {
+                    lblMessage.setText("IPlease use organization email only");
+                    return;
+                }
+
+                try {
+                    Connection conn = DBConnection.getConnection();
+                    String authenticationQuery = "SELECT EMAIL, PASSWORD FROM EMPLOYEE WHERE EMAIL = ? AND PASSWORD = ?;";
+                    PreparedStatement psStmt = conn.prepareStatement(authenticationQuery);
+                    psStmt.setString(1, Username);
+                    psStmt.setString(2, Password);
+
+                    ResultSet res  = psStmt.executeQuery();
+
+                    if (res.next()) {
+                        new EmployeeDashboardFrame(Username, Password);
+                        dispose();
+                        conn.close();
+                        lblMessage.setText("Login Successful.........");
+                        return;
+                    } else {
+                        lblMessage.setText("Invalid Credentials!");
+                        return;
+                    }
+
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
             }
         });
 

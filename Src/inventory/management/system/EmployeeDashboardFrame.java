@@ -17,7 +17,13 @@ import javax.swing.JPanel;
  */
 public class EmployeeDashboardFrame extends JFrame {
 
-    public EmployeeDashboardFrame() {
+    String Username, Password;
+
+    public EmployeeDashboardFrame(String Username, String Password) {
+
+        this.Username = Username;
+        this.Password = Password;
+
         setTitle("Inventory Management System - Employee");
         setExtendedState(JFrame.MAXIMIZED_BOTH);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -55,7 +61,7 @@ public class EmployeeDashboardFrame extends JFrame {
 
         add(header, BorderLayout.NORTH);
 
-        add(new EmployeeSalesPanel(), BorderLayout.CENTER);
+        add(new EmployeeSalesPanel(Username, Password), BorderLayout.CENTER);
 
         JPanel footer = new JPanel();
         footer.setBackground(Color.GRAY);
@@ -70,6 +76,6 @@ public class EmployeeDashboardFrame extends JFrame {
     }
 
     public static void main(String[] args) {
-        new EmployeeDashboardFrame();
+        new EmployeeDashboardFrame("", "");
     }
 }

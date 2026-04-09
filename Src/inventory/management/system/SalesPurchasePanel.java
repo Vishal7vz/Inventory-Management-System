@@ -290,7 +290,7 @@ public class SalesPurchasePanel extends JPanel {
 
             clearAfterPurchase(tfSupplierId, tfSupplier, cbCategory, cbProductId, tfQty, tfPrice, tfSellingPrice,
                     tfDate);
-            mainTabs.setSelectedIndex(1);
+            // mainTabs.setSelectedIndex(1);
 
             try {
 
