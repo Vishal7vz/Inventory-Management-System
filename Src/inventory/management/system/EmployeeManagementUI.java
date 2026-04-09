@@ -369,7 +369,7 @@ public class EmployeeManagementUI extends JFrame implements ActionListener {
                 return;
             }
 
-            if (mobileNo.length() < 10 || mobileNo.length() > 10) {
+            if (mobileNo.length() != 10 || !mobileNo.matches("\\d+")) {
                 JOptionPane.showMessageDialog(panel, "Invalid Mobile Number. It should Contain 10 digits.",
                         "Invalid mobile number",
                         JOptionPane.WARNING_MESSAGE);
@@ -413,7 +413,7 @@ public class EmployeeManagementUI extends JFrame implements ActionListener {
                             "Employee Creation", JOptionPane.INFORMATION_MESSAGE);
                 }
 
-                txtId.setText("");
+                txtId.setText("EMP-BGB-0001");
                 txtName.setText("");
                 txtMobile.setText("");
                 txtAge.setText("");
@@ -423,6 +423,10 @@ public class EmployeeManagementUI extends JFrame implements ActionListener {
                 txtDesignation.setText("");
                 txtSalary.setText("");
                 genderBox.setSelectedIndex(0);
+
+                placeHolder(txtId);
+
+                loadTableData();
 
                 conn.close();
                 return;
@@ -434,7 +438,7 @@ public class EmployeeManagementUI extends JFrame implements ActionListener {
 
         // ! -------------------- RESET ----------------------------
         resetBtn.addActionListener(e -> {
-            txtId.setText("");
+            txtId.setText("EMP-BGB-0001");
             txtName.setText("");
             txtMobile.setText("");
             txtAge.setText("");
@@ -444,6 +448,8 @@ public class EmployeeManagementUI extends JFrame implements ActionListener {
             txtDesignation.setText("");
             txtSalary.setText("");
             genderBox.setSelectedIndex(0);
+
+            placeHolder(txtId);
         });
 
         panel.add(title, BorderLayout.NORTH);
@@ -733,7 +739,7 @@ public class EmployeeManagementUI extends JFrame implements ActionListener {
 
                 conn.close();
 
-                txtId.setText("");
+                txtId.setText("EMP-BGB-0001");
                 txtName.setText("");
                 txtMobile.setText("");
                 txtAge.setText("");
@@ -744,6 +750,8 @@ public class EmployeeManagementUI extends JFrame implements ActionListener {
                 txtSalary.setText("");
                 genderBox.setSelectedIndex(0);
 
+                placeHolder(txtId);
+
                 return;
 
             } catch (Exception ex) {
@@ -752,7 +760,7 @@ public class EmployeeManagementUI extends JFrame implements ActionListener {
         });
 
         resetBtn.addActionListener(e -> {
-            txtId.setText("");
+            txtId.setText("EMP-BGB-0001");
             txtName.setText("");
             txtMobile.setText("");
             txtAge.setText("");
@@ -762,6 +770,8 @@ public class EmployeeManagementUI extends JFrame implements ActionListener {
             txtDesignation.setText("");
             txtSalary.setText("");
             genderBox.setSelectedIndex(0);
+
+            placeHolder(txtId);
         });
 
         panel.add(title, BorderLayout.NORTH);
@@ -974,6 +984,8 @@ public class EmployeeManagementUI extends JFrame implements ActionListener {
                         loadTableData();
                     }
                     conn.close();
+                    foundIndex[0] = -1;
+                    txtId.setText("EMP-BGB-0001");
                     clearDetailFields(detailFields);
                     return;
 

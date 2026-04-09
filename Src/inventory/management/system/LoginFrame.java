@@ -106,7 +106,7 @@ public class LoginFrame extends Frame implements ActionListener {
         appTitle.setBounds(400, 45, 750, 70);
         header.add(appTitle);
 
-        Label appSub = new Label("         Hardware         Grocery         Shoes", Label.LEFT);
+        Label appSub = new Label("         Hardware         Grocery         Shoes         Stationary         Garments", Label.LEFT);
         appSub.setFont(new Font("SansSerif", Font.PLAIN, 20));
         appSub.setForeground(new Color(200, 220, 255));
         appSub.setBounds(400, 115, 750, 30);

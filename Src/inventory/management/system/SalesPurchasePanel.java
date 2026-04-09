@@ -7,9 +7,15 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
 import java.awt.event.ItemEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.text.SimpleDateFormat;
-import java.util.Locale;
 import java.util.regex.Pattern;
 
 import javax.swing.BorderFactory;
@@ -23,7 +29,6 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
-import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -38,15 +43,21 @@ import javax.swing.table.JTableHeader;
 public class SalesPurchasePanel extends JPanel {
 
     private static final String[] PURCHASE_HISTORY_COLS = {
-            "ID", "Supplier ID", "Supplier", "Category", "Product", "Qty", "Price/Unit", "Selling Price", "Total",
+            "Serial No.", "Supplier ID", "Supplier", "Category", "Product", "Qty", "Price/Unit", "Selling Price",
+            "Total",
             "Date"
     };
     private static final String[] SALES_HISTORY_COLS = {
-            "ID", "Customer ID", "Customer", "Category", "Product", "Qty", "Selling Price", "Total", "Date", "Sold By"
+            "Serial No.", "Customer ID", "Customer", "Category", "Product", "Qty", "Selling Price", "Total", "Date",
+            "Sold By"
+    };
+    private static final String[] PRODUCT_DETAILS_COLS = {
+            "Product ID", "Product ", "Category", "Description", "Qty", "Purchase Price", "Selling Price",
     };
 
     private final DefaultTableModel purchaseHistoryModel;
     private final DefaultTableModel salesHistoryModel;
+    private final DefaultTableModel productDetailsModel;
 
     private JTabbedPane mainTabs;
 
@@ -58,7 +69,7 @@ public class SalesPurchasePanel extends JPanel {
     private static final Color INPUT_BG = new Color(51, 65, 85);
     private static final Color TABLE_HEADER_BLUE = new Color(37, 99, 235);
     private static final Font FONT_LABEL = new Font("SansSerif", Font.BOLD, 16);
-    private static final Font FONT_FIELD = new Font("SansSerif", Font.PLAIN, 15);
+    private static final Font FONT_FIELD = new Font("SansSerif", Font.BOLD, 15);
     private static final Font FONT_TITLE = new Font("SansSerif", Font.BOLD, 22);
     private static final Font FONT_BTN = new Font("SansSerif", Font.BOLD, 16);
 
@@ -67,6 +78,7 @@ public class SalesPurchasePanel extends JPanel {
     public SalesPurchasePanel() {
         purchaseHistoryModel = createNonEditableTableModel(PURCHASE_HISTORY_COLS);
         salesHistoryModel = createNonEditableTableModel(SALES_HISTORY_COLS);
+        productDetailsModel = createNonEditableTableModel(PRODUCT_DETAILS_COLS);
 
         setLayout(new BorderLayout());
         setBackground(BG_DARK);
@@ -87,6 +99,7 @@ public class SalesPurchasePanel extends JPanel {
         // Keep Sales History beside Purchase History for quick comparison.
         mainTabs.addTab("Sales History", wrapTab(buildSalesHistoryTab()));
         mainTabs.addTab("Purchase History", wrapTab(buildPurchaseHistoryTab()));
+        mainTabs.addTab("Product Details", wrapTab(buildProductDetailsTab()));
 
         mainTabs.addChangeListener(new ChangeListener() {
             @Override
@@ -102,6 +115,9 @@ public class SalesPurchasePanel extends JPanel {
                     return;
                 } else if (selectedIndex == 2) {
                     heading.setText("Purchase History");
+                    return;
+                } else if (selectedIndex == 3) {
+                    heading.setText("Product Details");
                     return;
                 } else {
                     return;
@@ -140,7 +156,7 @@ public class SalesPurchasePanel extends JPanel {
         JLabel lblSupplierId = makeFormLabel("Supplier ID");
         JLabel lblSupplier = makeFormLabel("Supplier Name");
         JLabel lblCategory = makeFormLabel("Category");
-        JLabel lblProduct = makeFormLabel("Product Name");
+        JLabel lblProductId = makeFormLabel("Product ID");
         JLabel lblQty = makeFormLabel("Quantity");
         JLabel lblPrice = makeFormLabel("Price per Unit");
         JLabel lblSellingPrice = makeFormLabel("Selling Price");
@@ -149,10 +165,24 @@ public class SalesPurchasePanel extends JPanel {
         JTextField tfSupplierId = makeField();
         JTextField tfSupplier = makeField();
         JComboBox<String> cbCategory = makeCombo(ProductCatalog.categoryComboItems());
-        JComboBox<String> cbProduct = makeCombo(new String[] { ProductCatalog.PLACEHOLDER });
+        JComboBox<String> cbProductId = makeCombo(new String[] { ProductCatalog.PLACEHOLDER });
         cbCategory.addItemListener(e -> {
             if (e.getStateChange() == ItemEvent.SELECTED) {
-                ProductCatalog.refreshProductCombo(cbProduct, cbCategory.getSelectedItem());
+                ProductCatalog.refreshProductCombo(cbProductId, cbCategory.getSelectedItem());
+            }
+        });
+
+        cbCategory.addFocusListener(new FocusListener() {
+
+            @Override
+            public void focusGained(FocusEvent e) {
+
+                ProductCatalog.refreshCategoryCombo();
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                // System.out.println("ComboBox Lost Focus");
             }
         });
 
@@ -165,11 +195,46 @@ public class SalesPurchasePanel extends JPanel {
         addFormRow(panel, gbc, row++, lblSupplierId, tfSupplierId);
         addFormRow(panel, gbc, row++, lblSupplier, tfSupplier);
         addFormRow(panel, gbc, row++, lblCategory, cbCategory);
-        addFormRow(panel, gbc, row++, lblProduct, cbProduct);
+        addFormRow(panel, gbc, row++, lblProductId, cbProductId);
         addFormRow(panel, gbc, row++, lblQty, tfQty);
         addFormRow(panel, gbc, row++, lblPrice, tfPrice);
         addFormRow(panel, gbc, row++, lblSellingPrice, tfSellingPrice);
         addFormRow(panel, gbc, row++, lblDate, tfDate);
+
+        tfSupplierId.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    String supplierId = tfSupplierId.getText().trim();
+                    if (supplierId.length() != 12 || !supplierId.startsWith("SUP-BGB-")
+                            || !supplierId.matches("^[A-Z]{3}-[A-Z]{3}-[0-9]{4}$")) {
+
+                        JOptionPane.showMessageDialog(panel, "Invalid Supplier ID", "Validation",
+                                JOptionPane.WARNING_MESSAGE);
+                        return;
+                    }
+                    try {
+                        Connection conn = DBConnection.getConnection();
+                        String getSupplierNameQuery = "SELECT SUPPLIER_NAME FROM SUPPLIER WHERE SUPPLIER_ID = ?";
+                        PreparedStatement psStmt = conn.prepareStatement(getSupplierNameQuery);
+                        psStmt.setString(1, supplierId);
+
+                        ResultSet res = psStmt.executeQuery();
+                        if (res.next()) {
+                            tfSupplier.setText(res.getString("SUPPLIER_NAME").trim());
+                            return;
+
+                        } else {
+                            JOptionPane.showMessageDialog(panel, "Supplier does not exist.", "Not found",
+                                    JOptionPane.INFORMATION_MESSAGE);
+                            return;
+                        }
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            }
+        });
 
         gbc.gridx = 0;
         gbc.gridy = row;
@@ -181,7 +246,7 @@ public class SalesPurchasePanel extends JPanel {
             String supplierIdStr = tfSupplierId.getText().trim();
             String supplier = tfSupplier.getText().trim();
             String category = String.valueOf(cbCategory.getSelectedItem());
-            String product = String.valueOf(cbProduct.getSelectedItem());
+            String productId = String.valueOf(cbProductId.getSelectedItem());
             String qtyStr = tfQty.getText().trim();
             String priceStr = tfPrice.getText().trim();
             String sellingPriceStr = tfSellingPrice.getText().trim();
@@ -197,7 +262,14 @@ public class SalesPurchasePanel extends JPanel {
                         JOptionPane.WARNING_MESSAGE);
                 return;
             }
-            if (ProductCatalog.isPlaceholder(product)) {
+
+            if (productId.length() != 12 || !productId.startsWith("PRO-BGB-")
+                    || !productId.matches("^[A-Z]{3}-[A-Z]{3}-[0-9]{4}$")) {
+                JOptionPane.showMessageDialog(this, "Invalid Product ID", "Validation", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            if (ProductCatalog.isPlaceholder(productId)) {
                 JOptionPane.showMessageDialog(this, "Please select a product.", "Validation",
                         JOptionPane.WARNING_MESSAGE);
                 return;
@@ -215,18 +287,51 @@ public class SalesPurchasePanel extends JPanel {
             int qty = Integer.parseInt(qtyStr);
             double unit = Double.parseDouble(priceStr);
             double selling = Double.parseDouble(sellingPriceStr);
-            double total = qty * unit;
-            // ! int suppId = Integer.parseInt(supplierIdStr);
 
-            clearAfterPurchase(tfSupplierId, tfSupplier, cbCategory, cbProduct, tfQty, tfPrice, tfSellingPrice, tfDate);
-            JOptionPane.showMessageDialog(SwingUtilities.getWindowAncestor(this),
-                    "Purchase recorded successfully.\nSupplier ID: " + supplierIdStr + "\nSupplier: " + supplier
-                            + "\nCategory: " + category + "\nProduct: " + product + "\nSelling Price: "
-                            + formatRupee(selling) + "\nTotal: " + formatRupee(total),
-                    "Success", JOptionPane.INFORMATION_MESSAGE);
+            clearAfterPurchase(tfSupplierId, tfSupplier, cbCategory, cbProductId, tfQty, tfPrice, tfSellingPrice,
+                    tfDate);
             mainTabs.setSelectedIndex(1);
 
-            // TODO: Save the purchase details into database.
+            try {
+
+                Connection conn = DBConnection.getConnection();
+                String storePurchaseDetailQuery = "INSERT INTO PURCHASE (SUPPLIER_ID, CATEGORY, PRODUCT_ID, QUANTITY, UNIT_PRICE, SELLING_UNIT_PRICE, DATE) VALUES (?, ?, ?, ?, ?, ?, ?)";
+                String setProductPriceQuery = "UPDATE PRODUCT_PRICE SET PURCHASE_UNIT_PRICE = ?, SELLING_UNIT_PRICE = ? WHERE PRODUCT_ID = ?;";
+                String updateProductQuantityQuery = "UPDATE PRODUCT_QUANTITY SET QUANTITY = COALESCE(QUANTITY, 0) + ? WHERE PRODUCT_ID = ?";
+
+                PreparedStatement psStmt = conn.prepareStatement(storePurchaseDetailQuery);
+                psStmt.setString(1, supplierIdStr);
+                psStmt.setString(2, category);
+                psStmt.setString(3, productId);
+                psStmt.setInt(4, qty);
+                psStmt.setDouble(5, unit);
+                psStmt.setDouble(6, selling);
+                psStmt.setString(7, dateStr);
+
+                PreparedStatement psStmt1 = conn.prepareStatement(setProductPriceQuery);
+                psStmt1.setDouble(1, unit);
+                psStmt1.setDouble(2, selling);
+                psStmt1.setString(3, productId);
+
+                PreparedStatement psStmt2 = conn.prepareStatement(updateProductQuantityQuery);
+                psStmt2.setInt(1, qty);
+                psStmt2.setString(2, productId);
+
+                psStmt.executeUpdate();
+                psStmt1.executeUpdate();
+                psStmt2.executeUpdate();
+
+                JOptionPane.showMessageDialog(panel, "Purchase Successfull", "Message",
+                        JOptionPane.INFORMATION_MESSAGE);
+
+                conn.close();
+                loadProductData();
+                loadPurchaseHistory();
+                return;
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
         });
         panel.add(submit, gbc);
 
@@ -234,10 +339,9 @@ public class SalesPurchasePanel extends JPanel {
     }
 
     private JPanel buildPurchaseHistoryTab() {
-        // TODO: To load the purchase data from the database. For demo, new purchases in
-        // this session are shown here.
-        // !DEMO: purchaseHistoryModel.addRow(new Object[] {1, "52VCD23", "Aditya
-        // Patel", "Hardware", "Laptop", 25, 45000, 60000, 45000*25, "12/12/2025" });
+
+        loadPurchaseHistory();
+
         return tableInScrollPane(purchaseHistoryModel);
     }
 
@@ -245,8 +349,83 @@ public class SalesPurchasePanel extends JPanel {
         // TODO: To load the sales data from the database and store it into the sales
         // history model.
         // ! DEMO: salesHistoryModel.addRow(new Object[] {1, "52VCD23", "Aditya Patel",
-        // "Hardware", "Laptop", 25, 60000, 45000*25, "12/12/2025" });
+        // ! "Hardware", "Laptop", 25, 60000, 45000*25, "12/12/2025" });
         return tableInScrollPane(salesHistoryModel);
+    }
+
+    JPanel buildProductDetailsTab() {
+        loadProductData();
+        return tableInScrollPane(productDetailsModel);
+    }
+
+    private void loadProductData() {
+
+        productDetailsModel.setRowCount(0);
+
+        try {
+            Connection conn = DBConnection.getConnection();
+            String fetchProductDetailsQuery = "SELECT PRODUCT.*, PRODUCT_PRICE.SELLING_UNIT_PRICE,PRODUCT_PRICE.PURCHASE_UNIT_PRICE, PRODUCT_QUANTITY.QUANTITY FROM PRODUCT\n"
+                    +
+                    "INNER JOIN PRODUCT_PRICE\n" +
+                    "INNER JOIN PRODUCT_QUANTITY\n" +
+                    "WHERE PRODUCT.PRODUCT_ID = PRODUCT_PRICE.PRODUCT_ID AND PRODUCT.PRODUCT_ID = PRODUCT_QUANTITY.PRODUCT_ID;";
+            PreparedStatement psStmt = conn.prepareStatement(fetchProductDetailsQuery);
+            ResultSet res = psStmt.executeQuery();
+
+            while (res.next()) {
+                productDetailsModel.addRow(new Object[] {
+                        res.getString("PRODUCT_ID"),
+                        res.getString("PRODUCT_NAME"),
+                        res.getString("CATEGORY"),
+                        res.getString("DESCRIPTION"),
+                        res.getString("QUANTITY"),
+                        res.getDouble("PURCHASE_UNIT_PRICE"),
+                        res.getDouble("SELLING_UNIT_PRICE"),
+                });
+            }
+
+            conn.close();
+            return;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void loadPurchaseHistory() {
+        purchaseHistoryModel.setRowCount(0);
+        try {
+
+            Connection conn = DBConnection.getConnection();
+            String fetchPurchaseHistoryQuery = "SELECT PURCHASE.*, SUPPLIER.SUPPLIER_NAME, PRODUCT.PRODUCT_NAME FROM PURCHASE\n"
+                    +
+                    "INNER JOIN SUPPLIER\n" +
+                    "INNER JOIN PRODUCT\n" +
+                    "WHERE PURCHASE.SUPPLIER_ID = SUPPLIER.SUPPLIER_ID AND PURCHASE.PRODUCT_ID = PRODUCT.PRODUCT_ID;";
+
+            PreparedStatement psStmt = conn.prepareStatement(fetchPurchaseHistoryQuery);
+            ResultSet res = psStmt.executeQuery();
+
+            while (res.next()) {
+                purchaseHistoryModel.addRow(new Object[] {
+                        res.getInt("SERIAL_NO"),
+                        res.getString("SUPPLIER_ID"),
+                        res.getString("SUPPLIER_NAME"),
+                        res.getString("CATEGORY"),
+                        res.getString("SUPPLIER_NAME"),
+                        res.getString("QUANTITY"),
+                        res.getDouble("UNIT_PRICE"),
+                        res.getDouble("SELLING_UNIT_PRICE"),
+                        res.getDouble("QUANTITY") * res.getDouble("UNIT_PRICE"),
+                        res.getString("DATE")
+                });
+            }
+
+            conn.close();
+            return;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private JPanel tableInScrollPane(DefaultTableModel model) {
@@ -364,12 +543,12 @@ public class SalesPurchasePanel extends JPanel {
     }
 
     private void clearAfterPurchase(JTextField tfSupplierId, JTextField tfSupplier, JComboBox<String> cbCategory,
-            JComboBox<String> cbProduct, JTextField tfQty, JTextField tfPrice, JTextField tfSellingPrice,
+            JComboBox<String> cbProductId, JTextField tfQty, JTextField tfPrice, JTextField tfSellingPrice,
             JTextField tfDate) {
         tfSupplierId.setText("");
         tfSupplier.setText("");
         cbCategory.setSelectedIndex(0);
-        ProductCatalog.refreshProductCombo(cbProduct, cbCategory.getSelectedItem());
+        cbProductId.setSelectedIndex(0);
         tfQty.setText("");
         tfPrice.setText("");
         tfSellingPrice.setText("");
@@ -448,7 +627,4 @@ public class SalesPurchasePanel extends JPanel {
         return null;
     }
 
-    private static String formatRupee(double amount) {
-        return String.format(Locale.US, "₹%,.2f", amount);
-    }
 }

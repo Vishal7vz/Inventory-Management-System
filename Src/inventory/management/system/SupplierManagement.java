@@ -4,7 +4,9 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.*;
-// import java.sql.*; JDBC
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 
 public class SupplierManagement extends JFrame implements ActionListener {
 
@@ -14,11 +16,7 @@ public class SupplierManagement extends JFrame implements ActionListener {
 
     Button btnUpdate, btnAdd, btnShow, btnDelete, btnExit;
 
-    // TODO: Database connection
-    // Connection con = DBConnection.getConnection();
-
-
-    //Table Model (global)
+    // Table Model (global)
     DefaultTableModel tableModel;
     JTable table;
 
@@ -42,7 +40,7 @@ public class SupplierManagement extends JFrame implements ActionListener {
         ImageIcon image = new ImageIcon("Src\\Icons\\Logo.png");
         setIconImage(image.getImage());
         setResizable(false);
-        
+
         JPanel header = new JPanel();
         header.setLayout(new FlowLayout(FlowLayout.CENTER));
         header.setBackground(new Color(15, 23, 42));
@@ -118,15 +116,16 @@ public class SupplierManagement extends JFrame implements ActionListener {
         title.setForeground(Color.WHITE);
         title.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        String[] columns = {"ID", "Name", "Mobile", "GST Number", "Email","Address", "Company Type" };
-                
+        String[] columns = { "ID", "Name", "Mobile", "GST Number", "Email", "Address", "Company Type" };
+
         tableModel = new DefaultTableModel(columns, 0);
         table = new JTable(tableModel);
 
         table.setRowHeight(30);
-        table.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        table.setFont(new Font("SansSerif", Font.BOLD, 14));
         table.setForeground(Color.WHITE);
-        table.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 18));
+        table.setBackground(getForeground());
+        table.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 16));
         table.getTableHeader().setBackground(new Color(56, 189, 248));
         table.getTableHeader().setForeground(Color.WHITE);
 
@@ -145,7 +144,33 @@ public class SupplierManagement extends JFrame implements ActionListener {
 
     // ! ===== LOAD DATA FROM DB =====
     private void loadTableData() {
-        // TODO : Load the data from database and store into Table.
+        tableModel.setRowCount(0);
+
+        try {
+
+            Connection conn = DBConnection.getConnection();
+            String loadSupplierDataQuery = "SELECT * FROM SUPPLIER;";
+            PreparedStatement psStmt = conn.prepareStatement(loadSupplierDataQuery);
+            ResultSet res = psStmt.executeQuery();
+
+            while (res.next()) {
+                tableModel.addRow(new Object[] {
+                        res.getString("SUPPLIER_ID"),
+                        res.getString("SUPPLIER_NAME"),
+                        res.getString("MOBILE_NO"),
+                        res.getString("GST_NUMBER"),
+                        res.getString("EMAIL"),
+                        res.getString("ADDRESS"),
+                        res.getString("COMPANY_TYPE")
+                });
+            }
+
+            conn.close();
+            return;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     // ! ================ ADD PANEL ======================
@@ -165,10 +190,10 @@ public class SupplierManagement extends JFrame implements ActionListener {
         form.setBorder(BorderFactory.createEmptyBorder(50, 100, 50, 100));
         form.setBackground(new Color(30, 41, 59));
 
-        JTextField txtId = new JTextField();
+        JTextField txtId = new JTextField("SUP-BGB-0001");
         JTextField txtName = new JTextField();
         JTextField txtMobile = new JTextField();
-        JTextField txtGstNumber = new JTextField();
+        JTextField txtGstNumber = new JTextField("27ABCDE1234F1Z5");
         JTextField txtEmail = new JTextField();
         JTextField txtAddress = new JTextField();
 
@@ -176,7 +201,7 @@ public class SupplierManagement extends JFrame implements ActionListener {
         JComboBox<String> comTypeBox = new JComboBox<>(comTypeOptions);
 
         JTextField[] fields = { txtId, txtName, txtMobile, txtGstNumber, txtEmail,
-                txtAddress};
+                txtAddress };
 
         for (JTextField field : fields) {
             field.setFont(new Font("SansSerif", Font.BOLD, 18));
@@ -184,6 +209,9 @@ public class SupplierManagement extends JFrame implements ActionListener {
             field.setBackground(Color.WHITE);
 
         }
+
+        txtId.setForeground(Color.GRAY);
+        txtGstNumber.setForeground(Color.GRAY);
 
         JLabel idLbl = new JLabel("Supplier ID: ");
         idLbl.setFont(new Font("SansSerif", Font.BOLD, 22));
@@ -219,6 +247,9 @@ public class SupplierManagement extends JFrame implements ActionListener {
         comTypeLbl.setFont(new Font("SansSerif", Font.BOLD, 22));
         comTypeLbl.setForeground(Color.WHITE);
         comTypeLbl.setBackground(Color.WHITE);
+
+        placeHolder(txtId, txtId.getText().trim());
+        placeHolder(txtGstNumber, txtGstNumber.getText().trim());
 
         form.add(idLbl);
         form.add(txtId);
@@ -276,13 +307,19 @@ public class SupplierManagement extends JFrame implements ActionListener {
                 return;
             }
 
-            if (gstNum.length() < 18 || gstNum.length() > 18) {
-                JOptionPane.showMessageDialog(panel, "GST Number should be 18 character", "Invalid GST Number",
+            if (id.length() != 12 || !id.matches("^[A-Z]{3}-[A-Z]{3}-[0-9]{4}$") || !id.startsWith("SUP-BGB-")) {
+                JOptionPane.showMessageDialog(panel, "Invalid ID Format", "Invalid ID",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (gstNum.length() != 15 || !gstNum.matches("^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$")) {
+                JOptionPane.showMessageDialog(panel, "Invalid GST Number Format.", "Invalid GST Number",
                         JOptionPane.WARNING_MESSAGE);
                 return;
             }
 
-            if (mobileNo.length() < 10 || mobileNo.length() > 10) {
+            if (mobileNo.length() != 10 || !mobileNo.matches("\\d+")) {
                 JOptionPane.showMessageDialog(panel, "Invalid Mobile Number. It should Contain 10 digits.",
                         "Invalid mobile number",
                         JOptionPane.WARNING_MESSAGE);
@@ -295,18 +332,62 @@ public class SupplierManagement extends JFrame implements ActionListener {
                 return;
             }
 
-            // TODO : Insert into database
+            try {
+
+                Connection conn = DBConnection.getConnection();
+                String addSupplierQuery = "INSERT INTO SUPPLIER (SUPPLIER_ID, SUPPLIER_NAME,MOBILE_NO, GST_NUMBER, EMAIL, ADDRESS, COMPANY_TYPE) VALUES (?, ?, ?, ?, ?, ?, ?);";
+                PreparedStatement psStmt = conn.prepareStatement(addSupplierQuery);
+                psStmt.setString(1, id);
+                psStmt.setString(2, name);
+                psStmt.setString(3, mobileNo);
+                psStmt.setString(4, gstNum);
+                psStmt.setString(5, email);
+                psStmt.setString(6, address);
+                psStmt.setString(7, comType);
+
+                int affectedRows = psStmt.executeUpdate();
+
+                if (affectedRows > 0) {
+                    JOptionPane.showMessageDialog(panel, "Supplier Added Successfully", "Add Supplier",
+                            JOptionPane.INFORMATION_MESSAGE);
+                }
+
+                conn.close();
+                txtId.setText("SUP-BGB-001");
+                txtName.setText("");
+                txtMobile.setText("");
+                txtGstNumber.setText("27ABCDE1234F1Z5");
+                txtEmail.setText("");
+                txtAddress.setText("");
+                comTypeBox.setSelectedIndex(0);
+
+                txtId.setForeground(Color.GRAY);
+                txtGstNumber.setForeground(Color.GRAY);
+                placeHolder(txtId, txtId.getText().trim());
+                placeHolder(txtGstNumber, txtGstNumber.getText().trim());
+                loadTableData();
+                return;
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+
         });
 
         // ! -------------------- RESET ----------------------------
         resetBtn.addActionListener(e -> {
-            txtId.setText("");
+            txtId.setText("SUP-BGB-0001");
             txtName.setText("");
             txtMobile.setText("");
-            txtGstNumber.setText("");
+            txtGstNumber.setText("27ABCDE1234F1Z5");
             txtEmail.setText("");
             txtAddress.setText("");
             comTypeBox.setSelectedIndex(0);
+
+            txtId.setForeground(Color.GRAY);
+            txtGstNumber.setForeground(Color.GRAY);
+            placeHolder(txtId, txtId.getText().trim());
+            placeHolder(txtGstNumber, txtGstNumber.getText().trim());
         });
 
         panel.add(title, BorderLayout.NORTH);
@@ -331,23 +412,25 @@ public class SupplierManagement extends JFrame implements ActionListener {
         form.setBorder(BorderFactory.createEmptyBorder(50, 100, 50, 100));
         form.setBackground(new Color(30, 41, 59));
 
-        JTextField txtId = new JTextField();
+        JTextField txtId = new JTextField("SUP-BGB-0001");
         JTextField txtName = new JTextField();
         JTextField txtMobile = new JTextField();
-        JTextField txtGstNumber = new JTextField();
+        JTextField txtGstNumber = new JTextField("");
         JTextField txtEmail = new JTextField();
         JTextField txtAddress = new JTextField();
         String[] comTypeOptions = { "Private", "Government", "Sole Proprietorship" };
         JComboBox<String> comTypeBox = new JComboBox<>(comTypeOptions);
 
         JTextField[] fields = { txtId, txtName, txtMobile, txtGstNumber, txtEmail,
-                txtAddress};
+                txtAddress };
 
         for (JTextField field : fields) {
             field.setFont(new Font("SansSerif", Font.BOLD, 18));
             field.setForeground(Color.BLACK);
             field.setBackground(Color.WHITE);
         }
+
+        txtId.setForeground(Color.GRAY);
 
         JLabel idLbl = new JLabel("Search By Supplier ID: ");
         idLbl.setFont(new Font("SansSerif", Font.BOLD, 22));
@@ -385,6 +468,8 @@ public class SupplierManagement extends JFrame implements ActionListener {
         comTypeLbl.setBackground(Color.WHITE);
 
         comTypeBox.setFont(new Font("SansSerif", Font.BOLD, 18));
+
+        placeHolder(txtId, txtId.getText().trim());
 
         form.add(idLbl);
         form.add(txtId);
@@ -431,12 +516,16 @@ public class SupplierManagement extends JFrame implements ActionListener {
         final int[] foundIndex = new int[] { -1 };
 
         loadBtn.addActionListener(e -> {
-            // TODO : Load from the Table if supplier exist.
-
             String id = txtId.getText().trim();
             if (id.isEmpty()) {
                 JOptionPane.showMessageDialog(panel, "Enter an Supplier ID to search.", "Input needed",
                         JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+
+            if (id.length() != 12 || !id.matches("^[A-Z]{3}-[A-Z]{3}-[0-9]{4}$") || !id.startsWith("SUP-BGB-")) {
+                JOptionPane.showMessageDialog(panel, "Invalid ID Format", "Invalid ID",
+                        JOptionPane.ERROR_MESSAGE);
                 return;
             }
 
@@ -451,7 +540,7 @@ public class SupplierManagement extends JFrame implements ActionListener {
                 Object val = tableModel.getValueAt(i, 0);
                 if (val != null && id.equals(val.toString())) {
 
-                    // populate fields from model columns (match columns in show panel)
+                    // ! populate fields from model columns (match columns in show panel)
 
                     txtName.setText(safeToString(tableModel.getValueAt(i, 1)));
                     txtMobile.setText(safeToString(tableModel.getValueAt(i, 2)));
@@ -476,7 +565,6 @@ public class SupplierManagement extends JFrame implements ActionListener {
             String address = txtAddress.getText().trim();
             String comType = comTypeBox.getSelectedItem().toString();
 
-
             if (id.isEmpty() || name.isEmpty() || mobileNo.isEmpty() || gstNum.isEmpty() || email.isEmpty()
                     || address.isEmpty() || comType.isEmpty() || gstNum.isEmpty()) {
                 JOptionPane.showMessageDialog(panel, "Please fill all the fields.", "Empty fields",
@@ -484,8 +572,14 @@ public class SupplierManagement extends JFrame implements ActionListener {
                 return;
             }
 
-            if (gstNum.length() != 15) {
-                JOptionPane.showMessageDialog(panel, "GST Number should be 15 characters", "Invalid Age",
+            if (id.length() != 12 || !id.matches("^[A-Z]{3}-[A-Z]{3}-[0-9]{4}$") || !id.startsWith("SUP-BGB-")) {
+                JOptionPane.showMessageDialog(panel, "Invalid ID Format", "Invalid ID",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (gstNum.length() != 15 || !gstNum.matches("^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$")) {
+                JOptionPane.showMessageDialog(panel, "GST Number should be 15 character", "Invalid GST Number",
                         JOptionPane.WARNING_MESSAGE);
                 return;
             }
@@ -503,17 +597,55 @@ public class SupplierManagement extends JFrame implements ActionListener {
                 return;
             }
 
-            // TODO : update database logic
+            try {
+
+                Connection conn = DBConnection.getConnection();
+                String updateSupplierQuery = "UPDATE SUPPLIER SET SUPPLIER_NAME = ?, MOBILE_NO = ?, GST_NUMBER = ?, EMAIL = ?, ADDRESS = ?, COMPANY_TYPE = ? WHERE SUPPLIER_ID = ?;";
+                PreparedStatement psStmt = conn.prepareStatement(updateSupplierQuery);
+                psStmt.setString(1, name);
+                psStmt.setString(2, mobileNo);
+                psStmt.setString(3, gstNum);
+                psStmt.setString(4, email);
+                psStmt.setString(5, address);
+                psStmt.setString(6, comType);
+                psStmt.setString(7, id);
+
+                int affectedRows = psStmt.executeUpdate();
+
+                if (affectedRows > 0) {
+                    JOptionPane.showMessageDialog(panel, "Supplier Updated Successfully", "Update SUpplier",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    loadTableData();
+                }
+                conn.close();
+                txtId.setText("SUP-BGB-0001");
+                txtName.setText("");
+                txtMobile.setText("");
+                txtGstNumber.setText("");
+                txtEmail.setText("");
+                txtAddress.setText("");
+                comTypeBox.setSelectedIndex(0);
+
+                txtId.setForeground(Color.GRAY);
+                placeHolder(txtId, txtId.getText().trim());
+                return;
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
         });
 
         resetBtn.addActionListener(e -> {
-            txtId.setText("");
+            txtId.setText("SUP-BGB-0001");
             txtName.setText("");
             txtMobile.setText("");
             txtGstNumber.setText("");
             txtEmail.setText("");
             txtAddress.setText("");
             comTypeBox.setSelectedIndex(0);
+
+            txtId.setForeground(Color.GRAY);
+            placeHolder(txtId, txtId.getText().trim());
         });
 
         panel.add(title, BorderLayout.NORTH);
@@ -541,8 +673,8 @@ public class SupplierManagement extends JFrame implements ActionListener {
         JLabel idLbl = new JLabel("Supplier ID:");
         idLbl.setFont(new Font("SansSerif", Font.BOLD, 22));
         idLbl.setForeground(Color.WHITE);
-        JTextField txtId = new JTextField();
-        txtId.setFont(new Font("SansSerif", Font.PLAIN, 18));
+        JTextField txtId = new JTextField("SUP-BGB-0001");
+        txtId.setFont(new Font("SansSerif", Font.BOLD, 18));
         txtId.setBackground(Color.WHITE);
 
         Button searchBtn = new Button("Search");
@@ -560,7 +692,7 @@ public class SupplierManagement extends JFrame implements ActionListener {
         JTextField txtComType = new JTextField();
 
         JTextField[] detailFields = { txtName, txtGstNumber, txtEmail,
-                txtAddress, txtComType};
+                txtAddress, txtComType };
 
         for (JTextField f : detailFields) {
             f.setFont(new Font("SansSerif", Font.BOLD, 18));
@@ -568,6 +700,8 @@ public class SupplierManagement extends JFrame implements ActionListener {
             f.setBackground(Color.WHITE);
             f.setEditable(false);
         }
+
+        txtId.setForeground(Color.GRAY);
 
         JLabel nameLbl = new JLabel("Supplier Name:");
         nameLbl.setFont(new Font("SansSerif", Font.BOLD, 22));
@@ -588,6 +722,8 @@ public class SupplierManagement extends JFrame implements ActionListener {
         JLabel comTypeLbl = new JLabel("Company Type: ");
         comTypeLbl.setFont(new Font("SansSerif", Font.BOLD, 22));
         comTypeLbl.setForeground(Color.WHITE);
+
+        placeHolder(txtId, txtId.getText().trim());
 
         // Add components to form (search row first)
         form.add(idLbl);
@@ -668,6 +804,7 @@ public class SupplierManagement extends JFrame implements ActionListener {
         });
 
         deleteBtn.addActionListener(e -> {
+            String id = txtId.getText().trim();
             if (foundIndex[0] == -1) {
                 JOptionPane.showMessageDialog(panel, "No Supplier selected to delete. Please search first.",
                         "Nothing to delete", JOptionPane.INFORMATION_MESSAGE);
@@ -677,14 +814,35 @@ public class SupplierManagement extends JFrame implements ActionListener {
             int confirm = JOptionPane.showConfirmDialog(panel, "Are you sure you want to delete this Supplier?",
                     "Confirm Delete", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
-                if (tableModel != null && foundIndex[0] >= 0 && foundIndex[0] < tableModel.getRowCount()) {
-                    tableModel.removeRow(foundIndex[0]);
-                    JOptionPane.showMessageDialog(panel, "Supplier deleted.", "Deleted",
-                            JOptionPane.INFORMATION_MESSAGE);
+                try {
+
+                    Connection conn = DBConnection.getConnection();
+                    String deleteEmployeeQuery = "DELETE FROM SUPPLIER WHERE SUPPLIER_ID = ?";
+                    PreparedStatement psStmt = conn.prepareStatement(deleteEmployeeQuery);
+                    psStmt.setString(1, id);
+
+                    int affectedRows = psStmt.executeUpdate();
+                    if (affectedRows > 0) {
+                        JOptionPane.showMessageDialog(panel, "Supplier deleted.", "Deleted",
+                                JOptionPane.INFORMATION_MESSAGE);
+                        loadTableData();
+                    }
+
+                    conn.close();
+                    txtId.setText("SUP-BGB-0001");
+                    foundIndex[0] = -1;
+                    clearDetailFields(detailFields);
+
+                    txtId.setForeground(Color.GRAY);
+                    placeHolder(txtId, txtId.getText().trim());
+                    return;
+
+                } catch (Exception ex) {
+                    ex.printStackTrace();
                 }
-                foundIndex[0] = -1;
-                txtId.setText("");
-                clearDetailFields(detailFields);
+
+            } else if (confirm == JOptionPane.NO_OPTION) {
+                return;
             }
         });
 
@@ -734,6 +892,26 @@ public class SupplierManagement extends JFrame implements ActionListener {
             dispose();
             new AdminFeatures();
         }
+    }
+
+    private void placeHolder(JTextField txtId, String placeHolder) {
+        txtId.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                if (txtId.getText().equals(placeHolder)) {
+                    txtId.setText("");
+                    txtId.setForeground(Color.BLACK);
+                }
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                if (txtId.getText().isEmpty()) {
+                    txtId.setForeground(Color.GRAY);
+                    txtId.setText(placeHolder);
+                }
+            }
+        });
     }
 
     public static void main(String[] args) {
