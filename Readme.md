@@ -149,6 +149,11 @@ java LoginFrame
 * Role-based permissions (advanced)
 * Search & filter enhancements
 * UI modernization (JavaFX)
+* Mobile & Web version
+* Low stock alerts & email notifications
+* Advanced analytics & PDF export
+* Cloud database & multi-user roles
+* Barcode scanner & GST/Tax support
 
 ---
 
@@ -161,10 +166,10 @@ java LoginFrame
 
 ## 👨‍💻 Author
 
-**Aditya Patel**
-**Ravi Kishan Gaur**
-**Vishal Singh**
-**Satya Narayan**
+- **Aditya Patel**
+- **Ravi Kishan Gaur**
+- **Vishal Singh**
+- **Satya Narayan**
 * Computer Science Student
 * Project: Inventory Management System
 
@@ -173,10 +178,3 @@ java LoginFrame
 ## 📄 License
 
 This project is for educational purposes.
-dded a Future Plans section with 11 upgrade ideas including:
-
-📱 Mobile & 🌐 Web version
-🔔 Low stock alerts & 📧 email notifications
-📊 Advanced analytics & 🖨️ PDF export
-☁️ Cloud database & 👥 multi-user roles
-🔄 Barcode scanner & 🧾 GST/Tax support
